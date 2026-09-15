@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coloring Tool V3</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="coloringtool.png">
+    
+    <style>
+        :root {
+            --bg: #121212;
+            --panel: #1e1e1e;
+            --text: #e0e0e0;
+            --border: #333;
+            --accent: #4a90e2;
+            --canvas-bg: #000;
+        }
+        
+        body.light-mode {
+            --bg: #f4f4f5;
+            --panel: #ffffff;
+            --text: #18181b;
+            --border: #d4d4d8;
+            --accent: #2563eb;
+            --canvas-bg: #e5e5e5;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .container {
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        /* --- Section Divider --- */
+        .section-title {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--border);
+            color: var(--accent);
+        }
+
+        /* --- Harmonizer Styles --- */
+        .top-bar {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--panel);
+            padding: 0.8rem 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            margin-bottom: 1rem;
+            gap: 1rem;
+        }
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        input[type="color"] {
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background: none;
+            padding: 0;
+        }
+        input[type="text"] {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 0.4rem;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 1rem;
+            width: 80px;
+            text-align: center;
+        }
+        button {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        button:hover { filter: brightness(1.1); }
+        button.active { background: #666; }
+        
+        .grayscale-mode .palette-grid { filter: grayscale(100%); }
+
+        .palette-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 1rem;
+        }
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+        }
+        .card h3 {
+            margin: 0 0 0.8rem 0;
+            font-size: 1rem;
+            display: flex;
+            justify-content: space-between;
+            color: #888;
+        }
+        .swatch-row {
+            display: flex;
+            gap: 0.5rem;
+            align-items: flex-start;
+        }
+        .color-col {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border-radius: 4px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .main-swatch {
+            height: 60px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-family: monospace;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.1s;
+            position: relative;
+        }
+        .wcag-badge {
+            font-size: 0.6rem;
+            background: rgba(128, 128, 128, 0.4);
+            padding: 1px 4px;
+            border-radius: 3px;
+            margin-top: 4px;
+            font-weight: normal;
+        }
+        .main-swatch:active, .shade-swatch:active { opacity: 0.7; }
+        .expand-btn {
+            background: #2a2a2a;
+            color: #ccc;
+            font-size: 0.65rem;
+            padding: 0.25rem 0;
+            border-radius: 0;
+            width: 100%;
+            text-align: center;
+        }
+        body.light-mode .expand-btn { background: #e5e5e5; color: #555; }
+        .shades-container {
+            display: none;
+            flex-direction: column;
+            width: 100%;
+        }
+        .shades-container.expanded { display: flex; }
+
+        /* --- Custom Palette Creator --- */
+        .custom-palette {
+            margin-top: 1rem;
+        }
+        .custom-palette-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.6rem;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .custom-color-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.6rem;
+            width: 100%;
+        }
+        .custom-color-item {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 0.35rem;
+        }
+        .custom-color-item input[type="color"] {
+            width: 32px;
+            height: 32px;
+        }
+        .custom-color-item input[type="text"] {
+            width: 80px;
+            font-size: 0.85rem;
+        }
+        .remove-custom-color {
+            background: #444;
+            padding: 0.25rem 0.45rem;
+            font-size: 0.75rem;
+        }
+        .custom-palette-note {
+            color: #999;
+            font-size: 0.8rem;
+            margin: 0 0 0.8rem 0;
+        }
+        .custom-palette-empty {
+            color: #777;
+            font-size: 0.9rem;
+            padding: 0.8rem;
+            border: 1px dashed var(--border);
+            border-radius: 4px;
+        }
+        .shade-swatch {
+            height: 35px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.65rem;
+            cursor: pointer;
+            line-height: 1.2;
+            font-family: monospace;
+        }
+
+        /* --- Saved Palette Library --- */
+        .library-section {
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px dashed var(--border);
+        }
+        .library-controls {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        .library-controls input[type="text"] {
+            flex: 1;
+            text-align: left;
+            width: auto;
+            min-width: 200px;
+        }
+        .saved-palettes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 0.5rem;
+        }
+        .saved-palette-item {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            padding: 0.5rem;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: border-color 0.2s;
+        }
+        .saved-palette-item:hover {
+            border-color: var(--accent);
+        }
+        .saved-palette-info {
+            cursor: pointer;
+            flex: 1;
+        }
+        .saved-palette-name {
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: var(--text);
+            margin-bottom: 0.4rem;
+        }
+        .saved-palette-preview {
+            display: flex;
+            gap: 3px;
+        }
+        .preview-swatch {
+            width: 14px;
+            height: 14px;
+            border-radius: 2px;
+        }
+        .core-swatch {
+            border: 1px solid #777;
+            margin-right: 4px;
+        }
+        .delete-palette-btn {
+            background: transparent;
+            color: #999;
+            padding: 0.2rem 0.4rem;
+            font-size: 1rem;
+            margin-left: 0.5rem;
+        }
+        .delete-palette-btn:hover {
+            background: #ffdbdb;
+            color: #ff3b3b;
+        }
+
+        /* --- Retro Editor Styles --- */
+        .editor-layout {
+            display: flex;
+            gap: 1.5rem;
+            background: var(--panel);
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+        .editor-controls {
+            flex: 1;
+            min-width: 250px;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .canvas-container {
+            flex: 2;
+            min-width: 300px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: var(--canvas-bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            overflow: auto; /* Allows panning when zoomed */
+            position: relative;
+            height: 550px;
+        }
+        .canvas-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-width: 100%;
+            min-height: 100%;
+            padding: 1rem;
+            box-sizing: border-box;
+        }
+        canvas {
+            max-width: 100%;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            image-rendering: pixelated; 
+            cursor: crosshair;
+            transform-origin: center;
+            transition: transform 0.1s ease-out;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+            background: var(--bg);
+            padding: 0.8rem;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+        }
+        .control-group label {
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: var(--text);
+        }
+        .control-group .checkbox-label {
+            font-weight: normal;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+        }
+        input[type="range"] { width: 100%; cursor: pointer; }
+        input[type="file"] {
+            background: var(--bg);
+            padding: 0.5rem;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            color: var(--text);
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* --- Tooltip Styles --- */
+        #canvasTooltip {
+            position: fixed;
+            pointer-events: none;
+            background: rgba(0,0,0,0.85);
+            color: #fff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            display: none;
+            z-index: 1000;
+            border: 1px solid var(--border);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <!-- ========================================== -->
+    <!-- SECTION 1: PERCEPTUAL COLOR HARMONIZER     -->
+    <!-- ========================================== -->
+    <h2 class="section-title">1. Perceptual Color Harmonizer</h2>
+    
+    <div class="top-bar">
+        <h2 style="margin:0; font-size:1.2rem;">Coloring Tool V3</h2>
+        <div class="controls">
+            <input type="color" id="colorPicker" value="#a0dcdf">
+            <input type="text" id="hexInput" value="#a0dcdf">
+            <button id="bwToggle">B&W Filter: OFF</button>
+            <button id="themeToggle" style="background:#555;">Light Mode</button>
+        </div>
+    </div>
+
+    <div id="app" class="palette-grid">
+        <!-- Rendered via JS -->
+    </div>
+
+    <!-- ========================================== -->
+    <!-- CUSTOM PALETTE CREATOR                     -->
+    <!-- ========================================== -->
+    <div class="card custom-palette">
+        <h3>Custom Palette Creator <span>L: <span id="customPaletteL">—</span></span></h3>
+        <p class="custom-palette-note">
+            Choose any colors you want. Their hue and chroma are retained; their converted colors use the core color's L.
+        </p>
+        <div class="custom-palette-controls">
+            <button id="addCustomColor">+ Add Color</button>
+            <div id="customColorList" class="custom-color-list"></div>
+        </div>
+        <div id="customPaletteOutput" class="swatch-row"></div>
+
+        <!-- Saved Palette Library UI -->
+        <div class="library-section">
+            <h3 style="margin-top: 0; font-size: 0.9rem;">Palette Library</h3>
+            <div class="library-controls">
+                <input type="text" id="paletteNameInput" placeholder="Enter a custom name for this palette..." maxlength="30">
+                <button id="savePaletteBtn">Save Palette</button>
+                <button id="exportBtn" style="background:#666;">Export Library</button>
+                <button id="importBtn" style="background:#666;">Import Library</button>
+                <input type="file" id="importInput" style="display:none" accept=".json">
+            </div>
+            <div id="savedPalettesList" class="saved-palettes-grid"></div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- SECTION 2: RETRO CANVAS EDITOR             -->
+    <!-- ========================================== -->
+    <h2 class="section-title">2. Retro Image Processor</h2>
+
+    <div class="editor-layout">
+        <div class="editor-controls">
+            <div class="control-group">
+                <label for="imageUpload">Upload Image</label>
+                <input type="file" id="imageUpload" accept="image/*">
+            </div>
+
+            <div class="control-group">
+                <label>Filters & Effects</label>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="grayscaleToggle"> Grayscale
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="ditherToggle"> Bayer Dithering
+                </label>
+                <label class="checkbox-label" title="Forces the image to use ONLY the colors in your Custom Palette output above.">
+                    <input type="checkbox" id="paletteMapToggle"> Map to Custom Palette
+                </label>
+            </div>
+
+            <div class="control-group">
+                <label for="posterizeSlider">Posterize Levels: <span id="levelValue">4</span></label>
+                <input type="range" id="posterizeSlider" min="2" max="20" value="4">
+            </div>
+
+            <div class="control-group">
+                <label for="pixelSlider">Pixel Size: <span id="pixelValue">1</span>px</label>
+                <input type="range" id="pixelSlider" min="1" max="50" value="1">
+            </div>
+
+            <div class="control-group">
+                <label for="zoomSlider">Canvas Zoom: <span id="zoomValue">100</span>%</label>
+                <input type="range" id="zoomSlider" min="10" max="500" value="100">
+            </div>
+
+            <button id="downloadBtn" style="margin-top: auto;">Download Processed Image</button>
+        </div>
+
+        <div class="canvas-container">
+            <div class="canvas-wrapper">
+                <canvas id="retroCanvas"></canvas>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Canvas Hover Tooltip -->
+<div id="canvasTooltip"></div>
+
+<script>
+    /* ========================================================= */
+    /* UI TOGGLES (Theme)                                        */
+    /* ========================================================= */
+    const themeToggle = document.getElementById('themeToggle');
+    themeToggle.addEventListener('click', () => {
+        document.body.classList.toggle('light-mode');
+        const isLight = document.body.classList.contains('light-mode');
+        themeToggle.innerText = isLight ? 'Dark Mode' : 'Light Mode';
+    });
+
+    /* ========================================================= */
+    /* COLOR MATH & HARMONIZER LOGIC                             */
+    /* ========================================================= */
+    function hexToRgb(hex) {
+        let r=0, g=0, b=0;
+        if(hex.length===4) { r="0x"+hex[1]+hex[1]; g="0x"+hex[2]+hex[2]; b="0x"+hex[3]+hex[3]; } 
+        else if(hex.length===7) { r="0x"+hex[1]+hex[2]; g="0x"+hex[3]+hex[4]; b="0x"+hex[5]+hex[6]; }
+        return [+(r/255), +(g/255), +(b/255)];
+    }
+
+    function rgbToHex(r, g, b) {
+        const toHex = (c) => {
+            const hex = Math.max(0, Math.min(255, Math.round(c * 255))).toString(16);
+            return hex.length === 1 ? "0" + hex : hex;
+        };
+        return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+    }
+
+    // Relative Luminance & Contrast (WCAG)
+    function getLuminance(r, g, b) {
+        const a = [r, g, b].map(v => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+        return a[0] * 0.2126 + a[1] * 0.7152 + a[2] * 0.0722;
+    }
+    
+    function getContrast(rgb1, rgb2) {
+        const l1 = getLuminance(rgb1[0], rgb1[1], rgb1[2]);
+        const l2 = getLuminance(rgb2[0], rgb2[1], rgb2[2]);
+        const lightest = Math.max(l1, l2);
+        const darkest = Math.min(l1, l2);
+        return (lightest + 0.05) / (darkest + 0.05);
+    }
+
+    function getWcagBadge(bgRgb, textRgb) {
+        const ratio = getContrast(bgRgb, textRgb);
+        if (ratio >= 7) return `<span class="wcag-badge" title="Contrast: ${ratio.toFixed(1)}">AAA</span>`;
+        if (ratio >= 4.5) return `<span class="wcag-badge" title="Contrast: ${ratio.toFixed(1)}">AA</span>`;
+        return '';
+    }
+
+    function sRGBToLinear(c) { return c >= 0.04045 ? Math.pow((c + 0.055) / 1.055, 2.4) : c / 12.92; }
+    function linearToSRGB(c) { return c >= 0.0031308 ? 1.055 * Math.pow(c, 1.0 / 2.4) - 0.055 : 12.92 * c; }
+
+    function rgbToOklch(r, g, b) {
+        let lR=sRGBToLinear(r), lG=sRGBToLinear(g), lB=sRGBToLinear(b);
+        let l = 0.4122214708*lR + 0.5363325363*lG + 0.0514459929*lB;
+        let m = 0.2119034982*lR + 0.6806995451*lG + 0.1073969566*lB;
+        let s = 0.0883024619*lR + 0.2817188376*lG + 0.6299787005*lB;
+        let l_ = Math.cbrt(l), m_ = Math.cbrt(m), s_ = Math.cbrt(s);
+        let L = 0.2104542553*l_ + 0.7936177850*m_ - 0.0040720468*s_;
+        let a = 1.9779984951*l_ - 2.4285922050*m_ + 0.4505937099*s_;
+        let b_ = 0.0259040371*l_ + 0.7827717662*m_ - 0.8086757660*s_;
+        let C = Math.sqrt(a*a + b_*b_);
+        let H = Math.atan2(b_, a) * (180/Math.PI);
+        if(H<0) H+=360;
+        return [L, C, H];
+    }
+
+    function oklchToRgb(L, C, H) {
+        let hRad = H * (Math.PI / 180);
+        let a = C * Math.cos(hRad), b_ = C * Math.sin(hRad);
+        let l_ = L + 0.3963377774*a + 0.2158037573*b_;
+        let m_ = L - 0.1055613458*a - 0.0638541728*b_;
+        let s_ = L - 0.0894841775*a - 1.2914855480*b_;
+        let l = l_*l_*l_, m = m_*m_*m_, s = s_*s_*s_;
+        let lR = 4.0767416621*l - 3.3077115913*m + 0.2309699292*s;
+        let lG = -1.2684380046*l + 2.6097574011*m - 0.3413193965*s;
+        let lB = -0.0041960863*l - 0.7034186147*m + 1.7076147010*s;
+        return [linearToSRGB(lR), linearToSRGB(lG), linearToSRGB(lB)];
+    }
+
+    function getHarmonies(H) {
+        return {
+            "Analogous": [H, (H - 30 + 360) % 360, (H + 30) % 360],
+            "Complementary": [H, (H + 180) % 360],
+            "Split-Complementary": [H, (H + 150) % 360, (H + 210) % 360],
+            "Triadic": [H, (H + 120) % 360, (H + 240) % 360],
+            "Tetradic": [H, (H + 60) % 360, (H + 180) % 360, (H + 240) % 360],
+            "Square": [H, (H + 90) % 360, (H + 180) % 360, (H + 270) % 360]
+        };
+    }
+
+    function getShades(L) {
+        return [
+            { L: Math.min(1, L + 0.3), label: 'High' },
+            { L: Math.min(1, L + 0.15), label: 'Tint' },
+            { L: L, label: 'Base' },
+            { L: Math.max(0, L - 0.15), label: 'Shade' },
+            { L: Math.max(0, L - 0.3), label: 'Shadow' }
+        ];
+    }
+
+    window.copyColor = function(hex, element) {
+        hex = hex.replace('#', '');
+        const showCopied = () => {
+            const originalHTML = element.innerHTML;
+            element.innerHTML = `<span style="font-weight:bold; font-size:14px; margin-top:8px;">COPIED!</span>`;
+            setTimeout(() => element.innerHTML = originalHTML, 1000);
+        };
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+            navigator.clipboard.writeText(hex).then(showCopied).catch(() => copyColorFallback(hex, showCopied));
+            return;
+        }
+        copyColorFallback(hex, showCopied);
+    };
+
+    function copyColorFallback(text, onSuccess) {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        textarea.style.top = '0';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        let copied = false;
+        try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+        document.body.removeChild(textarea);
+        if (copied) onSuccess();
+    }
+
+    const app = document.getElementById('app');
+    const colorPicker = document.getElementById('colorPicker');
+    const hexInput = document.getElementById('hexInput');
+    const bwToggle = document.getElementById('bwToggle');
+
+    function updateHarmonizerUI(hex) {
+        let rgb = hexToRgb(hex);
+        let [L, C, H] = rgbToOklch(rgb[0], rgb[1], rgb[2]);
+        const harmonies = getHarmonies(H);
+        app.innerHTML = '';
+
+        for (const [title, hues] of Object.entries(harmonies)) {
+            const card = document.createElement('div');
+            card.className = 'card';
+            let colsHTML = hues.map(hue => {
+                let mainRgb = oklchToRgb(L, C, hue);
+                let mainHex = rgbToHex(...mainRgb);
+                let shades = getShades(L);
+                
+                let mainTextColorRgb = L > 0.6 ? [0,0,0] : [1,1,1];
+                let badgeHTML = getWcagBadge(mainRgb, mainTextColorRgb);
+
+                let shadesHTML = shades.map(shade => {
+                    let shadeHex = rgbToHex(...oklchToRgb(shade.L, C, hue));
+                    let textColor = shade.L > 0.6 ? '#000' : '#fff';
+                    return `
+                        <div class="shade-swatch" style="background-color: ${shadeHex}; color: ${textColor};" onclick="copyColor('${shadeHex}', this)">
+                            <span>${shade.label}</span>
+                            <span>${shadeHex}</span>
+                        </div>
+                    `;
+                }).join('');
+                return `
+                    <div class="color-col">
+                        <div class="main-swatch" style="background-color: ${mainHex}; color: ${L > 0.6 ? '#000' : '#fff'};" onclick="copyColor('${mainHex}', this)">
+                            <div>${mainHex}</div>
+                            ${badgeHTML}
+                        </div>
+                        <button class="expand-btn" onclick="this.nextElementSibling.classList.toggle('expanded')">▼ VALUES</button>
+                        <div class="shades-container">${shadesHTML}</div>
+                    </div>
+                `;
+            }).join('');
+            card.innerHTML = `
+                <h3>${title} <span>L: ${(L*100).toFixed(0)}%</span></h3>
+                <div class="swatch-row">${colsHTML}</div>
+            `;
+            app.appendChild(card);
+        }
+    }
+
+
+    /* ========================================================= */
+    /* CUSTOM PALETTE CREATOR & SAVING                           */
+    /* ========================================================= */
+    const customColorList = document.getElementById('customColorList');
+    const customPaletteOutput = document.getElementById('customPaletteOutput');
+    const customPaletteL = document.getElementById('customPaletteL');
+    const addCustomColorBtn = document.getElementById('addCustomColor');
+
+    const paletteNameInput = document.getElementById('paletteNameInput');
+    const savePaletteBtn = document.getElementById('savePaletteBtn');
+    const savedPalettesList = document.getElementById('savedPalettesList');
+    const exportBtn = document.getElementById('exportBtn');
+    const importBtn = document.getElementById('importBtn');
+    const importInput = document.getElementById('importInput');
+
+    let customColors = [];
+    const STORAGE_KEY = 'retroToolSavedPalettes';
+
+    // Helper to get mathematically calculated RGBs for current palette (for palette mapping)
+    function getComputedCustomPaletteRgb() {
+        if (!customColors.length) return [];
+        const coreRgb = hexToRgb(colorPicker.value);
+        const [coreL] = rgbToOklch(coreRgb[0], coreRgb[1], coreRgb[2]);
+        
+        return customColors.map(hex => {
+            const rgb = hexToRgb(hex);
+            const [, C, H] = rgbToOklch(rgb[0], rgb[1], rgb[2]);
+            return oklchToRgb(coreL, C, H).map(v => Math.max(0, Math.min(255, Math.round(v * 255))));
+        });
+    }
+
+    function renderCustomColorInputs() {
+        customColorList.innerHTML = customColors.map((hex, index) => `
+            <div class="custom-color-item">
+                <input type="color" value="${hex}" data-custom-color="${index}">
+                <input type="text" value="${hex}" maxlength="7" data-custom-hex="${index}">
+                <button class="remove-custom-color" data-remove-custom="${index}" title="Remove color">×</button>
+            </div>
+        `).join('');
+
+        customColorList.querySelectorAll('[data-custom-color]').forEach(input => {
+            input.addEventListener('input', (e) => {
+                const index = Number(e.target.dataset.customColor);
+                customColors[index] = e.target.value.toUpperCase();
+                const hexInput = customColorList.querySelector(`[data-custom-hex="${index}"]`);
+                if (hexInput) hexInput.value = customColors[index];
+                renderCustomPalette();
+                if(document.getElementById('paletteMapToggle').checked) processImage();
+            });
+        });
+
+        customColorList.querySelectorAll('[data-custom-hex]').forEach(input => {
+            input.addEventListener('input', (e) => {
+                const index = Number(e.target.dataset.customHex);
+                const value = e.target.value;
+                if (/^#[0-9A-F]{6}$/i.test(value)) {
+                    customColors[index] = value.toUpperCase();
+                    const colorInput = customColorList.querySelector(`[data-custom-color="${index}"]`);
+                    if (colorInput) colorInput.value = customColors[index];
+                    renderCustomPalette();
+                    if(document.getElementById('paletteMapToggle').checked) processImage();
+                }
+            });
+        });
+
+        customColorList.querySelectorAll('[data-remove-custom]').forEach(button => {
+            button.addEventListener('click', () => {
+                customColors.splice(Number(button.dataset.removeCustom), 1);
+                renderCustomColorInputs();
+                renderCustomPalette();
+                if(document.getElementById('paletteMapToggle').checked) processImage();
+            });
+        });
+    }
+
+    function renderCustomPalette() {
+        const coreRgb = hexToRgb(colorPicker.value);
+        const [coreL] = rgbToOklch(coreRgb[0], coreRgb[1], coreRgb[2]);
+        customPaletteL.textContent = `${(coreL * 100).toFixed(0)}%`;
+
+        if (!customColors.length) {
+            customPaletteOutput.innerHTML = `
+                <div class="custom-palette-empty">Add colors above to create a converted palette.</div>
+            `;
+            return;
+        }
+
+        customPaletteOutput.innerHTML = customColors.map(hex => {
+            const rgb = hexToRgb(hex);
+            const [, C, H] = rgbToOklch(rgb[0], rgb[1], rgb[2]);
+
+            const mainRgb = oklchToRgb(coreL, C, H);
+            const mainHex = rgbToHex(...mainRgb);
+            const shades = getShades(coreL);
+
+            const mainTextColorRgb = coreL > 0.6 ? [0,0,0] : [1,1,1];
+            const badgeHTML = getWcagBadge(mainRgb, mainTextColorRgb);
+
+            const shadesHTML = shades.map(shade => {
+                const shadeHex = rgbToHex(...oklchToRgb(shade.L, C, H));
+                const textColor = shade.L > 0.6 ? '#000' : '#fff';
+                return `
+                    <div class="shade-swatch" style="background-color: ${shadeHex}; color: ${textColor};" onclick="copyColor('${shadeHex}', this)">
+                        <span>${shade.label}</span>
+                        <span>${shadeHex}</span>
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <div class="color-col">
+                    <div class="main-swatch" style="background-color: ${mainHex}; color: ${coreL > 0.6 ? '#000' : '#fff'};" onclick="copyColor('${mainHex}', this)">
+                        <div>${mainHex}</div>
+                        ${badgeHTML}
+                    </div>
+                    <button class="expand-btn" onclick="this.nextElementSibling.classList.toggle('expanded')">▼ VALUES</button>
+                    <div class="shades-container">${shadesHTML}</div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    addCustomColorBtn.addEventListener('click', () => {
+        customColors.push('#808080');
+        renderCustomColorInputs();
+        renderCustomPalette();
+    });
+
+    /* --- Library Storage Methods (Including Import/Export) --- */
+    function getSavedPalettes() {
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } 
+        catch (e) { return []; }
+    }
+
+    function setSavedPalettes(palettes) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(palettes));
+    }
+
+    function renderLibraryUI() {
+        const palettes = getSavedPalettes();
+        if (palettes.length === 0) {
+            savedPalettesList.innerHTML = `<div class="custom-palette-empty" style="border-style:none; padding:0;">No saved palettes yet.</div>`;
+            return;
+        }
+        savedPalettesList.innerHTML = palettes.map((pal, index) => {
+            const swatches = pal.colors.map(c => `<div class="preview-swatch" style="background-color: ${c};"></div>`).join('');
+            return `
+                <div class="saved-palette-item">
+                    <div class="saved-palette-info" onclick="loadPalette(${index})">
+                        <div class="saved-palette-name">${pal.name}</div>
+                        <div class="saved-palette-preview">
+                            <div class="preview-swatch core-swatch" style="background-color: ${pal.coreColor};" title="Base Core Color"></div>
+                            ${swatches}
+                        </div>
+                    </div>
+                    <button class="delete-palette-btn" onclick="deletePalette(${index})" title="Delete Palette">×</button>
+                </div>
+            `;
+        }).join('');
+    }
+
+    window.loadPalette = function(index) {
+        const palettes = getSavedPalettes();
+        const pal = palettes[index];
+        if (pal) {
+            colorPicker.value = pal.coreColor;
+            hexInput.value = pal.coreColor;
+            updateHarmonizerUI(pal.coreColor);
+            customColors = [...pal.colors];
+            renderCustomColorInputs();
+            renderCustomPalette();
+            if(document.getElementById('paletteMapToggle').checked) processImage();
+        }
+    };
+
+    window.deletePalette = function(index) {
+        const palettes = getSavedPalettes();
+        palettes.splice(index, 1);
+        setSavedPalettes(palettes);
+        renderLibraryUI();
+    };
+
+    savePaletteBtn.addEventListener('click', () => {
+        const name = paletteNameInput.value.trim() || `Palette ${getSavedPalettes().length + 1}`;
+        const palettes = getSavedPalettes();
+        palettes.push({ name: name, coreColor: colorPicker.value, colors: [...customColors] });
+        setSavedPalettes(palettes);
+        paletteNameInput.value = '';
+        renderLibraryUI();
+    });
+
+    exportBtn.addEventListener('click', () => {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(getSavedPalettes()));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", "coloring-tool-palettes.json");
+        document.body.appendChild(downloadAnchorNode); // required for firefox
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+    });
+
+    importBtn.addEventListener('click', () => importInput.click());
+    
+    importInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const imported = JSON.parse(event.target.result);
+                if (Array.isArray(imported)) {
+                    setSavedPalettes([...getSavedPalettes(), ...imported]);
+                    renderLibraryUI();
+                    alert("Library imported successfully!");
+                } else {
+                    alert("Invalid JSON format.");
+                }
+            } catch (err) { alert("Error reading file."); }
+        };
+        reader.readAsText(file);
+        e.target.value = ''; // Reset input
+    });
+
+    renderCustomColorInputs();
+    renderCustomPalette();
+    renderLibraryUI();
+
+    /* --- Core Listeners --- */
+    colorPicker.addEventListener('input', (e) => {
+        hexInput.value = e.target.value;
+        updateHarmonizerUI(e.target.value);
+        renderCustomPalette();
+        if(document.getElementById('paletteMapToggle').checked) processImage();
+    });
+    hexInput.addEventListener('input', (e) => {
+        let val = e.target.value;
+        if (/^#[0-9A-F]{6}$/i.test(val)) {
+            colorPicker.value = val;
+            updateHarmonizerUI(val);
+            renderCustomPalette();
+            if(document.getElementById('paletteMapToggle').checked) processImage();
+        }
+    });
+    bwToggle.addEventListener('click', () => {
+        document.body.classList.toggle('grayscale-mode');
+        const isActive = document.body.classList.contains('grayscale-mode');
+        bwToggle.classList.toggle('active');
+        bwToggle.innerText = isActive ? 'B&W Filter: ON' : 'B&W Filter: OFF';
+    });
+    
+    updateHarmonizerUI(colorPicker.value);
+
+
+    /* ========================================================= */
+    /* RETRO EDITOR LOGIC (Now with Zoom, Dither, Palette Map)   */
+    /* ========================================================= */
+    const canvas = document.getElementById('retroCanvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    
+    const uploadInput = document.getElementById('imageUpload');
+    const grayscaleToggle = document.getElementById('grayscaleToggle');
+    const ditherToggle = document.getElementById('ditherToggle');
+    const paletteMapToggle = document.getElementById('paletteMapToggle');
+    
+    const posterizeSlider = document.getElementById('posterizeSlider');
+    const levelValue = document.getElementById('levelValue');
+    const pixelSlider = document.getElementById('pixelSlider');
+    const pixelValue = document.getElementById('pixelValue');
+    const zoomSlider = document.getElementById('zoomSlider');
+    const zoomValue = document.getElementById('zoomValue');
+    const downloadBtn = document.getElementById('downloadBtn');
+
+    let currentImage = new Image();
+
+    // Bayer 4x4 matrix normalized roughly -0.5 to 0.5
+    const bayerMatrix = [
+        [ 0,  8,  2, 10],
+        [12,  4, 14,  6],
+        [ 3, 11,  1,  9],
+        [15,  7, 13,  5]
+    ].map(row => row.map(v => (v / 16) - 0.5));
+
+    function colorDistance(r1, g1, b1, r2, g2, b2) {
+        return Math.pow(r1-r2, 2) + Math.pow(g1-g2, 2) + Math.pow(b1-b2, 2);
+    }
+
+    function drawDefaultPattern() {
+        canvas.width = 400;
+        canvas.height = 400;
+        const gradient = ctx.createLinearGradient(0, 0, 400, 400);
+        gradient.addColorStop(0, "red");
+        gradient.addColorStop(0.5, "yellow");
+        gradient.addColorStop(1, "blue");
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 400, 400);
+        
+        ctx.beginPath();
+        ctx.arc(200, 200, 100, 0, Math.PI * 2);
+        ctx.fillStyle = "green";
+        ctx.fill();
+
+        currentImage.src = canvas.toDataURL();
+    }
+
+    function processImage() {
+        if (!currentImage.src) return;
+
+        const levels = parseInt(posterizeSlider.value);
+        const pixelSize = parseInt(pixelSlider.value);
+        const applyGrayscale = grayscaleToggle.checked;
+        const applyDither = ditherToggle.checked;
+        const applyMap = paletteMapToggle.checked;
+
+        levelValue.textContent = levels;
+        pixelValue.textContent = pixelSize;
+
+        const scaledW = Math.max(1, Math.floor(currentImage.width / pixelSize));
+        const scaledH = Math.max(1, Math.floor(currentImage.height / pixelSize));
+
+        canvas.width = currentImage.width;
+        canvas.height = currentImage.height;
+        ctx.imageSmoothingEnabled = false;
+        
+        // Downscale then upscale to create pixels
+        ctx.drawImage(currentImage, 0, 0, scaledW, scaledH);
+        ctx.drawImage(canvas, 0, 0, scaledW, scaledH, 0, 0, canvas.width, canvas.height);
+
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        
+        const factor = 255 / (levels - 1);
+        const customPalRgb = applyMap ? getComputedCustomPaletteRgb() : [];
+        const hasCustomPal = customPalRgb.length > 0;
+
+        for (let i = 0; i < data.length; i += 4) {
+            let r = data[i];
+            let g = data[i + 1];
+            let b = data[i + 2];
+
+            if (applyGrayscale) {
+                let gray = (0.299 * r) + (0.587 * g) + (0.114 * b);
+                r = g = b = gray;
+            }
+
+            // Apply Dither
+            if (applyDither) {
+                const px = (i / 4) % canvas.width;
+                const py = Math.floor((i / 4) / canvas.width);
+                // Size of dither pixel matches blocky pixel slider
+                const mapX = Math.floor(px / pixelSize) % 4;
+                const mapY = Math.floor(py / pixelSize) % 4;
+                const matrixVal = bayerMatrix[mapY][mapX];
+                
+                // Spread adjusts the intensity of the noise
+                const spread = applyMap && hasCustomPal ? 64 : factor; 
+                
+                r += matrixVal * spread;
+                g += matrixVal * spread;
+                b += matrixVal * spread;
+                
+                r = Math.max(0, Math.min(255, r));
+                g = Math.max(0, Math.min(255, g));
+                b = Math.max(0, Math.min(255, b));
+            }
+
+            // Quantization: Map to custom palette OR mathematically posterize
+            if (applyMap && hasCustomPal) {
+                let minDist = Infinity;
+                let bestColor = customPalRgb[0];
+                for(let c of customPalRgb) {
+                    let dist = colorDistance(r, g, b, c[0], c[1], c[2]);
+                    if (dist < minDist) { minDist = dist; bestColor = c; }
+                }
+                data[i] = bestColor[0];
+                data[i+1] = bestColor[1];
+                data[i+2] = bestColor[2];
+            } else {
+                data[i] = Math.round(r / factor) * factor;
+                data[i + 1] = Math.round(g / factor) * factor;
+                data[i + 2] = Math.round(b / factor) * factor;
+            }
+        }
+        ctx.putImageData(imageData, 0, 0);
+    }
+
+    uploadInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                currentImage.onload = processImage;
+                currentImage.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    posterizeSlider.addEventListener('input', processImage);
+    pixelSlider.addEventListener('input', processImage);
+    grayscaleToggle.addEventListener('change', processImage);
+    ditherToggle.addEventListener('change', processImage);
+    paletteMapToggle.addEventListener('change', processImage);
+
+    // Zoom Logic
+    zoomSlider.addEventListener('input', (e) => {
+        const val = e.target.value;
+        zoomValue.textContent = val;
+        canvas.style.transform = `scale(${val / 100})`;
+    });
+
+    downloadBtn.addEventListener('click', () => {
+        const link = document.createElement('a');
+        link.download = 'retro-edit.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    });
+
+    drawDefaultPattern();
+    currentImage.onload = processImage;
+
+    /* ========================================================= */
+    /* COLOR PICKER FROM CANVAS (Hover / Long Press)             */
+    /* ========================================================= */
+    const canvasTooltip = document.getElementById('canvasTooltip');
+    let longPressTimer;
+    let isTouching = false;
+    let touchStartX, touchStartY;
+
+    function getCanvasHexAt(e) {
+        const rect = canvas.getBoundingClientRect();
+        let clientX = e.touches && e.touches.length > 0 ? e.touches[0].clientX : e.clientX;
+        let clientY = e.touches && e.touches.length > 0 ? e.touches[0].clientY : e.clientY;
+        
+        // CSS transform scale is safely handled by rect.width / rect.height
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+
+        const x = Math.floor((clientX - rect.left) * scaleX);
+        const y = Math.floor((clientY - rect.top) * scaleY);
+
+        if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return null;
+
+        const pixel = ctx.getImageData(x, y, 1, 1).data;
+        return rgbToHex(pixel[0]/255, pixel[1]/255, pixel[2]/255);
+    }
+
+    function showTooltip(x, y, text) {
+        canvasTooltip.style.display = 'block';
+        canvasTooltip.style.left = (x + 15) + 'px';
+        canvasTooltip.style.top = (y + 15) + 'px';
+        canvasTooltip.innerHTML = text;
+    }
+
+    function hideTooltip() {
+        canvasTooltip.style.display = 'none';
+    }
+
+    function triggerCanvasCopy(hex, x, y) {
+        const textToCopy = hex.replace('#', '');
+        
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+            navigator.clipboard.writeText(textToCopy).catch(() => copyColorFallback(textToCopy, () => {}));
+        } else {
+            copyColorFallback(textToCopy, () => {});
+        }
+        
+        showTooltip(x, y, `<span style="color: var(--accent); font-weight: bold;">COPIED: ${textToCopy}</span>`);
+        if (navigator.vibrate) navigator.vibrate(50);
+        setTimeout(hideTooltip, 1200);
+    }
+
+    canvas.addEventListener('mousemove', (e) => {
+        if (isTouching) return;
+        const hex = getCanvasHexAt(e);
+        if (hex) showTooltip(e.clientX, e.clientY, hex);
+        else hideTooltip();
+    });
+    
+    canvas.addEventListener('mouseout', hideTooltip);
+    
+    canvas.addEventListener('dblclick', (e) => {
+        const hex = getCanvasHexAt(e);
+        if (hex) triggerCanvasCopy(hex, e.clientX, e.clientY);
+    });
+
+    canvas.addEventListener('touchstart', (e) => {
+        isTouching = true;
+        const hex = getCanvasHexAt(e);
+        if (!hex) return;
+        
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        
+        showTooltip(touchStartX, touchStartY, hex);
+
+        longPressTimer = setTimeout(() => {
+            triggerCanvasCopy(hex, touchStartX, touchStartY);
+        }, 500);
+    }, {passive: true});
+
+    canvas.addEventListener('touchmove', (e) => {
+        if (!isTouching) return;
+        const dx = e.touches[0].clientX - touchStartX;
+        const dy = e.touches[0].clientY - touchStartY;
+        
+        if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+            clearTimeout(longPressTimer);
+            hideTooltip();
+        }
+    }, {passive: true});
+
+    canvas.addEventListener('touchend', () => {
+        clearTimeout(longPressTimer);
+        setTimeout(() => { isTouching = false; hideTooltip(); }, 800);
+    });
+
+    canvas.addEventListener('touchcancel', () => {
+        clearTimeout(longPressTimer);
+        hideTooltip();
+        isTouching = false;
+    });
+
+</script>
+</body>
+</html>
